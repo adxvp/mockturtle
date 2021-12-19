@@ -78,7 +78,7 @@ public:
     /* TODO: write your implementation here */
 	calc_split_rounds();
 	pattern_t patterns(_ntk);
-	default_simulator<dynamic_truth_table> sim(_st.split_var);
+	default_simulator<kitty::dynamic_truth_table> sim(_st.split_var);
     for (uint32_t cpt = 1; cpt <= _st.rounds; cpt++){
       calculate_patterns(patterns, cpt);
       simulate_nodes(_ntk, patterns, sim);
