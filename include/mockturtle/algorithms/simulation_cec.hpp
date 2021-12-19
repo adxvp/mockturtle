@@ -40,6 +40,8 @@
 #include "miter.hpp"
 #include "simulation.hpp"
 
+#include <math.h>
+
 namespace mockturtle
 {
 
@@ -74,11 +76,57 @@ public:
   bool run()
   {
     /* TODO: write your implementation here */
-    return false;
+	calc_split_rounds();
+	pattern_t patterns(_ntk);
+	default_simulator<dynamic_truth_table> sim(_st.split_var);
+    for (uint32_t cpt = 1; cpt <= _st.rounds; cpt++){
+      calculate_patterns(patterns, cpt);
+      simulate_nodes(_ntk, patterns, sim);
+      if (equivalence(patterns) == false){
+        return false;
+      } 
+    }
+	return true;
   }
 
 private:
   /* you can add additional methods here */
+  void calc_split_rounds(){
+    if (_ntk.num_pis() <= 6){
+      _st.split_var = _ntk.num_pis();
+    } 
+    else{
+      uint32_t max_bound = std::pow(2,29);
+      uint32_t m = 7;
+      for (m ; m <= _ntk.num_pis() && (32 + std::pow(2, m - 3) * _ntk.size() < max_bound) ; m++){
+        _st.split_var = m;
+      }
+    }
+    _st.rounds = std::pow(2, _ntk.num_pis() - _st.split_var);
+  }
+
+  bool equivalence(pattern_t& patterns){
+    bool equiv;
+    _ntk.foreach_po([&](auto const& nd_check){
+      (_ntk.is_complemented(nd_check)) ? ((!is_const0(~patterns[nd_check])) ? equiv = false : equiv = true) : ((!is_const0(patterns[nd_check])) ? equiv = false : equiv = true);
+     } );
+     return equiv;
+  }
+
+  void calculate_patterns(pattern_t& patterns, uint32_t iter_cpt){
+    _ntk.foreach_pi([&](auto const& Pi){
+      kitty::dynamic_truth_table tt (_st.split_var);
+      if (Pi <=  _st.split_var){
+        kitty::create_nth_var(tt, Pi - 1);
+      }
+      if ( (Pi <=  _st.split_var) || ((iter_cpt >> (Pi - _st.split_var - 1)) % 2) ){
+        patterns[Pi] = tt;
+      }
+      else {
+        patterns[Pi] = ~tt;
+      }
+    });
+  }
 
 private:
   Ntk& _ntk;
